@@ -269,35 +269,48 @@
     render();
   }
 
-  async function deleteResource(id) {
-    if (!confirm("Padam pautan ini secara kekal?")) return;
+let targetDeleteId = null;
 
-    console.log("Attempting to delete ID:", id, "Type:", typeof id);
+function deleteResource(id) {
+  targetDeleteId = id;
+  const modal = document.getElementById("deleteModal");
+  if (modal) modal.style.display = "flex";
+}
 
-    // We chain .select() to see what row Supabase actually deletes
-    const { data, error } = await sb
-      .from("resources")
-      .delete()
-      .eq("id", id)
-      .select();
+// Attach event listeners for the custom modal
+document.addEventListener("DOMContentLoaded", () => {
+  const cancelBtn = document.getElementById("btnCancelDelete");
+  const confirmBtn = document.getElementById("btnConfirmDelete");
+  const modal = document.getElementById("deleteModal");
 
-    console.log("Delete response data:", data);
-    console.log("Delete response error:", error);
-
-    if (error) {
-      alert("Error deleting: " + error.message);
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      alert("Delete failed: No rows were deleted. (This is almost always a Supabase RLS policy issue).");
-      return;
-    }
-
-    alert("Successfully deleted!");
-    await loadResources(view.branch, view.department);
-    render();
+  if (cancelBtn) {
+    cancelBtn.onclick = () => {
+      modal.style.display = "none";
+      targetDeleteId = null;
+    };
   }
+
+  if (confirmBtn) {
+    confirmBtn.onclick = async () => {
+      modal.style.display = "none";
+      if (!targetDeleteId) return;
+
+      const { error } = await sb
+        .from("resources")
+        .delete()
+        .eq("id", targetDeleteId);
+
+      if (error) {
+        console.error("Gagal memadam:", error.message);
+      } else {
+        await loadResources(view.branch, view.department);
+        render();
+      }
+      
+      targetDeleteId = null;
+    };
+  }
+});
 
   // ---------- Navigation Helpers ----------
   function goHome() { view = { screen: "home" }; render(); }
@@ -446,6 +459,18 @@
       </div>`;
   }
 
+  <!-- Custom Delete Confirmation Modal -->
+  <div id="deleteModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; padding:20px; border-radius:8px; max-width:320px; text-align:center;">
+      <h3 style="margin-top:0;">Padam Pautan?</h3>
+      <p>Adakah anda pasti ingin memadam pautan ini secara kekal?</p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:20px;">
+        <button id="btnCancelDelete" style="padding:8px 16px; border:1px solid #ccc; background:#fff; border-radius:4px; cursor:pointer;">Batal</button>
+        <button id="btnConfirmDelete" style="padding:8px 16px; background:#dc3545; color:#fff; border:none; border-radius:4px; cursor:pointer;">Padam</button>
+      </div>
+    </div>
+  </div>
+
   function render() {
     let html = header() + crumb();
     if (view.screen === "home") html += screenHome();
@@ -460,6 +485,7 @@
 
     root.innerHTML = html;
   }
+
 
   // ---------- Window Handlers ----------
   window.__spmGoHome = goHome;
