@@ -272,21 +272,29 @@
   async function deleteResource(id) {
     if (!confirm("Padam pautan ini secara kekal?")) return;
 
-    // Ensure ID is passed correctly (handles both UUID strings and Integer IDs)
-    const targetId = isNaN(id) ? id : Number(id);
+    console.log("Attempting to delete ID:", id, "Type:", typeof id);
 
-    const { error } = await sb
+    // We chain .select() to see what row Supabase actually deletes
+    const { data, error } = await sb
       .from("resources")
       .delete()
-      .eq("id", targetId);
+      .eq("id", id)
+      .select();
 
-    if (error) { 
-      console.error("Delete error:", error);
-      showSiscAlert("Gagal memadam: " + error.message); 
-      return; 
+    console.log("Delete response data:", data);
+    console.log("Delete response error:", error);
+
+    if (error) {
+      alert("Error deleting: " + error.message);
+      return;
     }
 
-    // Refresh local list and re-render
+    if (!data || data.length === 0) {
+      alert("Delete failed: No rows were deleted. (This is almost always a Supabase RLS policy issue).");
+      return;
+    }
+
+    alert("Successfully deleted!");
     await loadResources(view.branch, view.department);
     render();
   }
