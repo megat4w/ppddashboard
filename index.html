@@ -271,8 +271,22 @@
 
   async function deleteResource(id) {
     if (!confirm("Padam pautan ini secara kekal?")) return;
-    const { error } = await sb.from("resources").delete().eq("id", id);
-    if (error) { showSiscAlert("Gagal memadam: " + error.message); return; }
+
+    // Ensure ID is passed correctly (handles both UUID strings and Integer IDs)
+    const targetId = isNaN(id) ? id : Number(id);
+
+    const { error } = await sb
+      .from("resources")
+      .delete()
+      .eq("id", targetId);
+
+    if (error) { 
+      console.error("Delete error:", error);
+      showSiscAlert("Gagal memadam: " + error.message); 
+      return; 
+    }
+
+    // Refresh local list and re-render
     await loadResources(view.branch, view.department);
     render();
   }
@@ -369,7 +383,7 @@
             </div>
             <div class="activity-actions">
               <button onclick="window.__spmEdit('${r.id}')">Edit</button>
-              <button class="btn-del" onclick="window.__spmDelete('${r.id}')">Padam</button>
+              <button class="btn-del" onclick="window.__spmDelete(${typeof r.id === 'string' ? `'${r.id}'` : r.id})">Padam</button>
             </div>
           </div>
         </div>`;
